@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "spo_storage_function": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7295",
+      "launchBrowser": false
+    }
+  }
+}
