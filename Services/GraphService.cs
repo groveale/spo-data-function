@@ -18,7 +18,9 @@ namespace groveale.Services
 
         Task<List<M365AppUsageReport>> GetM365AppUsageReportAsync(DateTime reportDate);
 
-        Task<bool> UploadFileToSharePointAsync(byte[] fileContent, string siteId, string fileName);
+        Task<bool> UploadFileToSharePointAsync(byte[] fileContent, string driveId, string fileName);
+
+        Task<string> GetDriveIdAsync();
     }
 
     public class GraphService : IGraphService
@@ -73,7 +75,8 @@ namespace groveale.Services
                     // Append the site data to the site dataString
                     if (doc.RootElement.TryGetProperty("value", out JsonElement usageReports))
                     {
-                        m365AppUsageReports.AddRange(JsonSerializer.Deserialize<List<M365AppUsageReport>>(usageReports));
+                        var reports = JsonSerializer.Deserialize<List<M365AppUsageReport>>(usageReports.GetRawText());
+                        m365AppUsageReports.AddRange(reports);
                     }
 
                     if (doc.RootElement.TryGetProperty("@odata.nextLink", out JsonElement nextLinkElement))
@@ -175,13 +178,25 @@ namespace groveale.Services
 
         }
 
-        public async Task<string> GetDriveIdAsync(string siteId, string libraryName)
+        public async Task<string> GetDriveIdAsync()
         {
-            var site = await _graphServiceClient.Sites[siteId].Request().GetAsync();
-            return site.DriveId;
+            var siteId = System.Environment.GetEnvironmentVariable("M365UsageDataSiteId");
+            var libraryName = System.Environment.GetEnvironmentVariable("AppUsageProcessedLibraryName");
+
+            var drives = await _graphServiceClient.Sites[siteId].Drives.GetAsync();
+
+            // filter the drives to get the one we want
+            var drive = drives.Value.FirstOrDefault(d => d.Name == libraryName);
+
+            if (drive == null)
+            {
+                throw new Exception($"Drive with name {libraryName} not found in site {siteId}");
+            }
+
+            return drive.Id;
         }
 
-        public async Task<bool> UploadFileToSharePointAsync(byte[] fileContent, string siteId, string driveId, string fileName)
+        public async Task<bool> UploadFileToSharePointAsync(byte[] fileContent, string driveId, string fileName)
         {
             // Look here: https://learn.microsoft.com/en-us/graph/sdks/large-file-upload?tabs=csharp
 
@@ -200,7 +215,7 @@ namespace groveale.Services
 
             // Create the upload session
             // itemPath does not need to be a path to an existing item
-            var myDrive = await _graphServiceClient.Me.Drive.GetAsync();
+            var drive = await _graphServiceClient.Drives[driveId].GetAsync();
             var uploadSession = await _graphServiceClient.Drives[driveId]
                 .Items["root"]
                 .ItemWithPath(fileName)

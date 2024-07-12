@@ -12,6 +12,7 @@ var host = new HostBuilder()
     // Register your custom service here
     services.AddSingleton<IStorageSnapshotService, StorageSnapshotService>();
     services.AddSingleton<IGraphService, GraphService>();
+    services.AddSingleton<ICSVFileService, CSVFileService>();
 
     })
     .Build();

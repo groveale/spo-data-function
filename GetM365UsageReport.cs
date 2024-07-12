@@ -44,6 +44,8 @@ namespace groveale
             // No report data for today and yesterday, so start from two days ago
             var twoDaysAgo = DateTime.Now.AddDays(-2);
 
+            var driveId = await _graphService.GetDriveIdAsync();
+
             for (int i = 0; i < daysToLookBack; i++)
             {
                 var reportDate = twoDaysAgo.AddDays(-i);
@@ -52,9 +54,19 @@ namespace groveale
                 _logger.LogInformation($"UsageReports for {reportDate.ToString("yyyy-MM-dd")}: {usageReports.Count}");
 
                 // Generate CSV file
-                var csvBytes = _csvFileService.ConvertM365ReportToCsvAndReturnAsBytesAsync(usageReports);
+                var csvBytes = await _csvFileService.ConvertM365ReportToCsvAndReturnAsBytesAsync(usageReports);
 
                 // Upload CSV file
+                var uploaded = await _graphService.UploadFileToSharePointAsync(csvBytes, driveId, $"M365UsageReport_{reportDate.ToString("yyyy-MM-dd")}.csv");
+
+                if (uploaded)
+                {
+                    _logger.LogInformation($"M365 Usage Report for {reportDate.ToString("yyyy-MM-dd")} uploaded successfully");
+                }
+                else
+                {
+                    _logger.LogError($"M365 Usage Report for {reportDate.ToString("yyyy-MM-dd")} failed to upload");
+                }
             }
 
         }
