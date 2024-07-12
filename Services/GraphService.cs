@@ -6,6 +6,7 @@ using System.Text.Json;
 using DriveUpload = Microsoft.Graph.Beta.Drives.Item.Items.Item.CreateUploadSession;
 using Microsoft.Graph.Beta.Models;
 using Microsoft.Graph.Beta.Models.ODataErrors;
+using Microsoft.Extensions.Logging;
 
 namespace groveale.Services 
 {
@@ -16,7 +17,7 @@ namespace groveale.Services
         // Add other methods as needed
         Task<TenantStorageReport> GetTenantStorageReportAsync();
 
-        Task<List<M365AppUsageReport>> GetM365AppUsageReportAsync(DateTime reportDate);
+        Task<List<M365AppUsageReport>> GetM365AppUsageReportAsync(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger);
 
         Task<bool> UploadFileToSharePointAsync(byte[] fileContent, string driveId, string fileName);
 
@@ -45,7 +46,7 @@ namespace groveale.Services
             return response.Token;
         }
 
-        public async Task<List<M365AppUsageReport>> GetM365AppUsageReportAsync(DateTime reportDate)
+        public async Task<List<M365AppUsageReport>> GetM365AppUsageReportAsync(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger)
         {
             // Date in string format YYYY-MM-DD
             //string reportDateString = reportDate.Value.ToString("yyyy-MM-dd");
@@ -53,6 +54,8 @@ namespace groveale.Services
 
             var urlString = _graphServiceClient.Reports.GetM365AppUserDetailWithDate(date).ToGetRequestInformation().URI.OriginalString;
             urlString += "?$format=application/json";//append the query parameter
+            // default is top 200 rows, we can use the below to increase this
+            //urlString += "?$format=application/json&$top=300";
             var m365AppUsageReportResponse = await _graphServiceClient.Reports.GetM365AppUserDetailWithDate(date).WithUrl(urlString).GetAsync();
 
             byte[] buffer = new byte[8192];
@@ -77,6 +80,8 @@ namespace groveale.Services
                     {
                         var reports = JsonSerializer.Deserialize<List<M365AppUsageReport>>(usageReports.GetRawText());
                         m365AppUsageReports.AddRange(reports);
+                        _logger.LogInformation($"Total User reports: {m365AppUsageReports.Count}");
+
                     }
 
                     if (doc.RootElement.TryGetProperty("@odata.nextLink", out JsonElement nextLinkElement))

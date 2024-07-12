@@ -41,15 +41,16 @@ namespace groveale
                 daysToLookBack = 7;
             }
 
-            // No report data for today and yesterday, so start from two days ago
-            var twoDaysAgo = DateTime.Now.AddDays(-2);
+            // No report data for today and yesterday, so start from two days ago. 
+            // Looking like we need to go back 4 days now 
+            var twoDaysAgo = DateTime.Now.AddDays(-4);
 
             var driveId = await _graphService.GetDriveIdAsync();
 
             for (int i = 0; i < daysToLookBack; i++)
             {
                 var reportDate = twoDaysAgo.AddDays(-i);
-                var usageReports = await _graphService.GetM365AppUsageReportAsync(reportDate);
+                var usageReports = await _graphService.GetM365AppUsageReportAsync(reportDate, _logger);
 
                 _logger.LogInformation($"UsageReports for {reportDate.ToString("yyyy-MM-dd")}: {usageReports.Count}");
 
@@ -57,7 +58,7 @@ namespace groveale
                 var csvBytes = await _csvFileService.ConvertM365ReportToCsvAndReturnAsBytesAsync(usageReports);
 
                 // Upload CSV file
-                var uploaded = await _graphService.UploadFileToSharePointAsync(csvBytes, driveId, $"M365UsageReport_{reportDate.ToString("yyyy-MM-dd")}.csv");
+                var uploaded = await _graphService.UploadFileToSharePointAsync(csvBytes, driveId, $"M365AppUserReport-{reportDate.ToString("yyyy-MM-dd")}.csv");
 
                 if (uploaded)
                 {
