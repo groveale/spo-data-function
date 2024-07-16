@@ -7,6 +7,7 @@ using DriveUpload = Microsoft.Graph.Beta.Drives.Item.Items.Item.CreateUploadSess
 using Microsoft.Graph.Beta.Models;
 using Microsoft.Graph.Beta.Models.ODataErrors;
 using Microsoft.Extensions.Logging;
+using System.Net;
 
 namespace groveale.Services 
 {
@@ -31,6 +32,12 @@ namespace groveale.Services
 
         public GraphService()
         {
+            // Set SecurityProtocol to TLS 1.2 or higher
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
+
+            // Bypass SSL certificate validation (Not recommended for production)
+            ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+
             _defaultCredential = new DefaultAzureCredential();
             _graphServiceClient = new GraphServiceClient(_defaultCredential,
                 // Use the default scope, which will request the scopes
