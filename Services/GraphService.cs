@@ -29,6 +29,7 @@ namespace groveale.Services
     {
         private GraphServiceClient _graphServiceClient;
         private DefaultAzureCredential _defaultCredential;
+        private ClientSecretCredential _clientSecretCredential;
 
         public GraphService()
         {
@@ -38,8 +39,14 @@ namespace groveale.Services
             // Bypass SSL certificate validation (Not recommended for production)
             ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
 
-            _defaultCredential = new DefaultAzureCredential();
-            _graphServiceClient = new GraphServiceClient(_defaultCredential,
+            //_defaultCredential = new DefaultAzureCredential();
+
+            _clientSecretCredential = new ClientSecretCredential(
+                System.Environment.GetEnvironmentVariable("AZURE_TENANT_ID"), 
+                System.Environment.GetEnvironmentVariable("AZURE_CLIENT_ID"),
+                System.Environment.GetEnvironmentVariable("AZURE_CLIENT_SECRET"));
+
+            _graphServiceClient = new GraphServiceClient(_clientSecretCredential,
                 // Use the default scope, which will request the scopes
                 // configured on the app registration
                 new[] {"https://graph.microsoft.com/.default"});
@@ -60,9 +67,9 @@ namespace groveale.Services
             Microsoft.Kiota.Abstractions.Date date = new Microsoft.Kiota.Abstractions.Date(reportDate);
 
             var urlString = _graphServiceClient.Reports.GetM365AppUserDetailWithDate(date).ToGetRequestInformation().URI.OriginalString;
-            urlString += "?$format=application/json";//append the query parameter
+            //urlString += "?$format=application/json";//append the query parameter
             // default is top 200 rows, we can use the below to increase this
-            //urlString += "?$format=application/json&$top=300";
+            urlString += "?$format=application/json&$top=600";
             var m365AppUsageReportResponse = await _graphServiceClient.Reports.GetM365AppUserDetailWithDate(date).WithUrl(urlString).GetAsync();
 
             byte[] buffer = new byte[8192];
