@@ -6,6 +6,7 @@ namespace groveale.Services
     public interface ICSVFileService
     {
         Task<byte[]> ConvertM365ReportToCsvAndReturnAsBytesAsync(List<M365AppUsageReport> reportData);
+        Task<byte[]> ConvertStringToCsvAndReturnAsBytesAsync(string reportData);
     }
 
     public class CSVFileService : ICSVFileService
@@ -28,6 +29,17 @@ namespace groveale.Services
             using (var streamWriter = new StreamWriter(memoryStream))
             {
                 await streamWriter.WriteAsync(csvBuilder.ToString());
+                await streamWriter.FlushAsync();
+                return memoryStream.ToArray(); // This byte array can be used for uploading
+            }
+        }
+
+        public async Task<byte[]> ConvertStringToCsvAndReturnAsBytesAsync(string reportData)
+        {
+            using (var memoryStream = new MemoryStream())
+            using (var streamWriter = new StreamWriter(memoryStream))
+            {
+                await streamWriter.WriteAsync(reportData);
                 await streamWriter.FlushAsync();
                 return memoryStream.ToArray(); // This byte array can be used for uploading
             }

@@ -18,7 +18,9 @@ namespace groveale.Services
         // Add other methods as needed
         Task<TenantStorageReport> GetTenantStorageReportAsync();
 
-        Task<List<M365AppUsageReport>> GetM365AppUsageReportAsync(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger);
+        Task<List<M365AppUsageReport>> GetM365AppUsageReportAsyncJSON(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger);
+
+        Task<string> GetM365AppUsageReportAsyncCSV(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger);
 
         Task<bool> UploadFileToSharePointAsync(byte[] fileContent, string driveId, string fileName);
 
@@ -39,6 +41,7 @@ namespace groveale.Services
             // Bypass SSL certificate validation (Not recommended for production)
             ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
 
+
             //_defaultCredential = new DefaultAzureCredential();
 
             _clientSecretCredential = new ClientSecretCredential(
@@ -46,10 +49,15 @@ namespace groveale.Services
                 System.Environment.GetEnvironmentVariable("AZURE_CLIENT_ID"),
                 System.Environment.GetEnvironmentVariable("AZURE_CLIENT_SECRET"));
 
-            _graphServiceClient = new GraphServiceClient(_clientSecretCredential,
+            // Timeout of 15 mins
+            var httpClient = Microsoft.Graph.GraphClientFactory.Create();
+            httpClient.Timeout = TimeSpan.FromMinutes(15);
+
+            _graphServiceClient = new GraphServiceClient(httpClient, _clientSecretCredential,
                 // Use the default scope, which will request the scopes
                 // configured on the app registration
                 new[] {"https://graph.microsoft.com/.default"});
+
         }
 
         public async Task<string> GetAuthToken()
@@ -60,16 +68,16 @@ namespace groveale.Services
             return response.Token;
         }
 
-        public async Task<List<M365AppUsageReport>> GetM365AppUsageReportAsync(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger)
+        public async Task<List<M365AppUsageReport>> GetM365AppUsageReportAsyncJSON(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger)
         {
             // Date in string format YYYY-MM-DD
             //string reportDateString = reportDate.Value.ToString("yyyy-MM-dd");
             Microsoft.Kiota.Abstractions.Date date = new Microsoft.Kiota.Abstractions.Date(reportDate);
 
             var urlString = _graphServiceClient.Reports.GetM365AppUserDetailWithDate(date).ToGetRequestInformation().URI.OriginalString;
-            //urlString += "?$format=application/json";//append the query parameter
+            urlString += "?$format=application/json";//append the query parameter
             // default is top 200 rows, we can use the below to increase this
-            urlString += "?$format=application/json&$top=600";
+            //urlString += "?$format=application/json&$top=600";
             var m365AppUsageReportResponse = await _graphServiceClient.Reports.GetM365AppUserDetailWithDate(date).WithUrl(urlString).GetAsync();
 
             byte[] buffer = new byte[8192];
@@ -117,6 +125,29 @@ namespace groveale.Services
             return m365AppUsageReports;
         }
 
+        public async Task<string> GetM365AppUsageReportAsyncCSV(DateTime reportDate, Microsoft.Extensions.Logging.ILogger _logger)
+        {
+            // Date in string format YYYY-MM-DD
+            //string reportDateString = reportDate.Value.ToString("yyyy-MM-dd");
+            Microsoft.Kiota.Abstractions.Date date = new Microsoft.Kiota.Abstractions.Date(reportDate);
+
+            var csvDownloadResponse = await _graphServiceClient.Reports.GetM365AppUserDetailWithDate(date).GetAsync();
+
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+
+            string csvData = "";
+
+            while ((bytesRead = await csvDownloadResponse.ReadAsync(buffer, 0, buffer.Length)) > 0)
+            {
+                // Process the chunk of data here
+                string chunk = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead);
+                csvData += chunk;
+            }
+
+            return csvData;
+
+        }
         public async Task<List<SiteReport>> GetSPOSiteReportAsync()
         {
             // We have to do some interesting things here to get the data in JSON from this graph endpoint

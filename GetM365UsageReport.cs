@@ -50,12 +50,16 @@ namespace groveale
             for (int i = 0; i < daysToLookBack; i++)
             {
                 var reportDate = twoDaysAgo.AddDays(-i);
-                var usageReports = await _graphService.GetM365AppUsageReportAsync(reportDate, _logger);
+                string csvData = await _graphService.GetM365AppUsageReportAsyncCSV(reportDate, _logger);
 
-                _logger.LogInformation($"UsageReports for {reportDate.ToString("yyyy-MM-dd")}: {usageReports.Count}");
+                // var usageReports = await _graphService.GetM365AppUsageReportAsyncJSON(reportDate, _logger);
+
+                // _logger.LogInformation($"UsageReports for {reportDate.ToString("yyyy-MM-dd")}: {usageReports.Count}");
+                
 
                 // Generate CSV file
-                var csvBytes = await _csvFileService.ConvertM365ReportToCsvAndReturnAsBytesAsync(usageReports);
+                var csvBytes = await _csvFileService.ConvertStringToCsvAndReturnAsBytesAsync(csvData);
+                //var csvBytes = await _csvFileService.ConvertM365ReportToCsvAndReturnAsBytesAsync(usageReports);
 
                 // Upload CSV file
                 var uploaded = await _graphService.UploadFileToSharePointAsync(csvBytes, driveId, $"M365AppUserReport-{reportDate.ToString("yyyy-MM-dd")}.csv");
