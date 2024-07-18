@@ -56,7 +56,7 @@ namespace groveale.Services
         {
             // Request token with given scopes
             var context = new TokenRequestContext(new[] {"https://graph.microsoft.com/.default"});
-            var response = await _defaultCredential.GetTokenAsync(context);
+            var response = await _clientSecretCredential.GetTokenAsync(context);
             return response.Token;
         }
 

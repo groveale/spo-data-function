@@ -35,9 +35,10 @@ namespace groveale
             var tenantSnap = await _graphService.GetTenantStorageReportAsync();
 
             await _storageSnapshotService.ProcessTenantSnapshot(tenantSnap);
+            await _storageSnapshotService.ProcessSiteSnapshots(spoSitesData);
 
             _logger.LogInformation($"SiteCount: {spoSitesData.Count}");
-            _logger.LogInformation($"SiteCount: {tenantSnap}");
+            _logger.LogInformation($"Tenant: {tenantSnap}");
         }
     }
 }
